@@ -1,0 +1,10 @@
+# 絕對不要提交的機敏檔案
+*.ovpn
+*.key
+*.crt
+*.pem
+ta.key
+otp_*.png
+otp/
+pki/
+.google_authenticator
