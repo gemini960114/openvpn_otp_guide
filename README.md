@@ -13,7 +13,7 @@
    │  第 1 道：用戶端憑證（內嵌在 .ovpn 檔）
    │  第 2 道：帳號 + 手機 6 位數 OTP
    ▼
-UDP 1194 ──► 雲端安全群組 ──► VPN 伺服器 (OpenVPN)
+TCP 443 ──► 雲端安全群組 ──► VPN 伺服器 (OpenVPN)
                                  │  PAM → pam_google_authenticator
                                  │        讀取 /etc/openvpn/otp/<帳號>
                                  ▼
@@ -22,7 +22,7 @@ UDP 1194 ──► 雲端安全群組 ──► VPN 伺服器 (OpenVPN)
 
 | 項目 | 設定 |
 |---|---|
-| 通道 | UDP 1194，TLS 1.3，資料加密 AES-256-GCM |
+| 通道 | TCP 443，TLS 1.3，資料加密 AES-256-GCM |
 | 控制通道保護 | tls-auth（ta.key）＋ HMAC-SHA256 |
 | 第一因子 | 用戶端 X.509 憑證（`verify-client-cert require`） |
 | 第二因子 | TOTP 6 位數／30 秒（PAM） |
@@ -52,7 +52,7 @@ UDP 1194 ──► 雲端安全群組 ──► VPN 伺服器 (OpenVPN)
 
 ### 步驟 0：雲端平台先開安全群組
 
-在雲端管理介面的安全群組新增入站規則：**UDP 1194，來源 0.0.0.0/0**（正式上線建議限縮為院區出口 IP）。
+在雲端管理介面的安全群組新增入站規則：**TCP 443，來源 0.0.0.0/0**（正式上線建議限縮為院區出口 IP）。
 沒開這條，用戶端會一直停在 connecting，伺服器日誌也不會有任何紀錄。
 
 ### 步驟 1：安裝
@@ -229,7 +229,7 @@ sudo bash scripts/diagnose.sh
 
 | 日誌訊息 | 意義 | 處理 |
 |---|---|---|
-| （伺服器完全沒日誌） | 封包沒進來 | 檢查安全群組 UDP 1194、`.ovpn` 的 remote IP |
+| （伺服器完全沒日誌） | 封包沒進來 | 檢查安全群組 TCP 443、`.ovpn` 的 remote IP |
 | `TLS Error: tls-auth` / `HMAC authentication failed` | ta.key 不符 | 重新產生並匯入 `.ovpn` |
 | `VERIFY ERROR` / `certificate verify failed` | 用戶端憑證不符 | 重新執行 `make_client.sh`，重新匯入 |
 | `Failed to read "..." for "xxx"` | PAM 讀不到金鑰檔 | 看注意事項 1、3；確認 `/etc/openvpn/otp/xxx` 存在 |
@@ -251,10 +251,11 @@ session required pam_permit.so
 
 `/etc/openvpn/server.conf`（重點）
 ```
-port 1194
-proto udp
+port 443
+proto tcp
 dev tun
 tls-auth /etc/openvpn/ta.key 0
+topology subnet
 server 10.8.0.0 255.255.255.0
 push "redirect-gateway def1 bypass-dhcp"
 cipher AES-256-GCM

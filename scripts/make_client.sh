@@ -21,8 +21,8 @@ OVPN="$OUT_DIR/$CN.ovpn"
 cat > "$OVPN" <<EOF
 client
 dev tun
-proto udp
-remote $IP 1194
+proto tcp
+remote $IP 443
 resolv-retry infinite
 nobind
 persist-key

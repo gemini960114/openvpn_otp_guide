@@ -49,22 +49,26 @@ EOF
 
 echo "[5/7] OpenVPN 伺服器設定"
 [ -f /etc/openvpn/server.conf ] && cp /etc/openvpn/server.conf "/etc/openvpn/server.conf.bak.$(date +%Y%m%d%H%M%S)"
+# 自動偵測主機系統上游 DNS（避免封閉環境阻擋外部 8.8.8.8）
+SYS_DNS=$(awk '/^nameserver / && $2 !~ /^127\./ {print $2; exit}' /run/systemd/resolve/resolv.conf /etc/resolv.conf 2>/dev/null || true)
+SYS_DNS=${SYS_DNS:-8.8.8.8}
+
 cat > /etc/openvpn/server.conf <<EOF
-port 1194
-proto udp
+port 443
+proto tcp
 dev tun
 ca /etc/openvpn/ca.crt
 cert /etc/openvpn/server.crt
 key /etc/openvpn/server.key
 dh /etc/openvpn/dh.pem
 tls-auth /etc/openvpn/ta.key 0
+topology subnet
 
 server $VPN_NET $VPN_MASK
 ifconfig-pool-persist /etc/openvpn/ipp.txt
 
 push "redirect-gateway def1 bypass-dhcp"
-push "dhcp-option DNS 8.8.8.8"
-push "dhcp-option DNS 1.1.1.1"
+push "dhcp-option DNS $SYS_DNS"
 
 keepalive 10 120
 cipher AES-256-GCM
@@ -97,7 +101,7 @@ systemctl is-active openvpn@server
 cat <<EOF
 
 安裝完成。接下來：
-  1. 雲端安全群組開放 UDP 1194 入站
+  1. 雲端安全群組開放 TCP 443 入站
   2. sudo bash make_client.sh client1 <對外IP>
   3. sudo bash add_user.sh <帳號>
   4. sudo bash test_auth.sh <帳號>
